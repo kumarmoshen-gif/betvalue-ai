@@ -92,15 +92,12 @@ def load_team_statistics(team_api_id, league_id, season):
 
     return json.loads(row["data"])
 
+
 # ==========================================================
 # Prediction History
 # ==========================================================
 
 def save_prediction(prediction):
-    """
-    Sauvegarde une prédiction dans l'historique SQLite.
-    """
-
     conn = get_connection()
 
     conn.execute(
@@ -119,40 +116,39 @@ def save_prediction(prediction):
             bookmaker_probability,
             value,
             decision,
-            fallback
+            fallback,
+            stake,
+            result,
+            bet_won,
+            profit
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             datetime.utcnow().isoformat(),
-
             prediction["match"],
             prediction["home_team"],
             prediction["away_team"],
-
             prediction["selected_bet"],
-
             prediction["home"],
             prediction["draw"],
             prediction["away"],
-
             prediction["confidence"],
-
             prediction["selected_odd"],
-
             prediction["value_bet"]["bookmaker_probability"]
             if prediction.get("value_bet")
             else None,
-
             prediction["value_bet"]["value"]
             if prediction.get("value_bet")
             else None,
-
             prediction["value_bet"]["decision"]
             if prediction.get("value_bet")
             else None,
-
             int(prediction.get("fallback", False)),
+            prediction.get("stake", 1),
+            prediction.get("result"),
+            prediction.get("bet_won"),
+            prediction.get("profit", 0),
         ),
     )
 
@@ -161,10 +157,6 @@ def save_prediction(prediction):
 
 
 def load_prediction_history(limit=100):
-    """
-    Retourne les dernières prédictions enregistrées.
-    """
-
     conn = get_connection()
 
     rows = conn.execute(
@@ -180,3 +172,59 @@ def load_prediction_history(limit=100):
     conn.close()
 
     return [dict(row) for row in rows]
+
+
+def update_prediction_result(prediction_id, result, stake=1):
+    conn = get_connection()
+
+    row = conn.execute(
+        """
+        SELECT predicted_result, odd
+        FROM prediction_history
+        WHERE id = ?
+        """,
+        (prediction_id,),
+    ).fetchone()
+
+    if row is None:
+        conn.close()
+        return None
+
+    predicted_result = row["predicted_result"]
+    odd = row["odd"]
+
+    bet_won = int(str(predicted_result).lower() == str(result).lower())
+
+    if bet_won:
+        profit = round((odd - 1) * stake, 2)
+    else:
+        profit = -stake
+
+    conn.execute(
+        """
+        UPDATE prediction_history
+        SET result = ?,
+            stake = ?,
+            bet_won = ?,
+            profit = ?
+        WHERE id = ?
+        """,
+        (
+            result,
+            stake,
+            bet_won,
+            profit,
+            prediction_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "prediction_id": prediction_id,
+        "result": result,
+        "stake": stake,
+        "bet_won": bet_won,
+        "profit": profit,
+    }
