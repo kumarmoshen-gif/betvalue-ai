@@ -279,3 +279,32 @@ def load_performance_stats():
         "roi": roi,
         "hit_rate": hit_rate,
     }
+def load_bankroll_history():
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT created_at, match, profit
+        FROM prediction_history
+        WHERE result IS NOT NULL
+        ORDER BY created_at ASC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    history = []
+    bankroll = 0
+
+    for row in rows:
+        profit = float(row["profit"] or 0)
+        bankroll += profit
+
+        history.append({
+            "created_at": row["created_at"],
+            "match": row["match"],
+            "profit": profit,
+            "bankroll": round(bankroll, 2),
+        })
+
+    return history
