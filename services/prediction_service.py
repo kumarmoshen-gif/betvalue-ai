@@ -10,9 +10,6 @@ from core.value_bet import compute_value_bet
 
 
 DEV_FALLBACK_ENABLED = True
-
-# Cote fictive pour tester le moteur Value Bet
-# Plus tard, on la remplacera par la vraie cote bookmaker.
 DEMO_HOME_ODD = 2.10
 
 
@@ -58,18 +55,46 @@ def get_fake_form(team_level="strong"):
     }
 
 
-def enrich_with_value_bet(prediction):
-    value_bet = compute_value_bet(
-        prediction["home"],
-        DEMO_HOME_ODD
+def get_ai_probability_for_bet(prediction, selected_bet, home_team, away_team):
+    if selected_bet is None:
+        return prediction["home"]
+
+    bet = str(selected_bet).lower()
+
+    if str(home_team).lower() in bet:
+        return prediction["home"]
+
+    if str(away_team).lower() in bet:
+        return prediction["away"]
+
+    if "draw" in bet or "nul" in bet:
+        return prediction["draw"]
+
+    return prediction["home"]
+
+
+def enrich_with_value_bet(prediction, home_team, away_team, selected_bet=None, selected_odd=None):
+    odd = selected_odd if selected_odd else DEMO_HOME_ODD
+
+    ai_probability = get_ai_probability_for_bet(
+        prediction,
+        selected_bet,
+        home_team,
+        away_team
     )
 
-    prediction["value_bet"] = value_bet
+    prediction["value_bet"] = compute_value_bet(
+        ai_probability,
+        odd
+    )
+
+    prediction["selected_bet"] = selected_bet
+    prediction["selected_odd"] = odd
 
     return prediction
 
 
-def get_fallback_prediction(home_team, away_team):
+def get_fallback_prediction(home_team, away_team, selected_bet=None, selected_odd=None):
     prediction = predict_match_v2(
         get_fake_stats("strong"),
         get_fake_stats("medium"),
@@ -80,16 +105,29 @@ def get_fallback_prediction(home_team, away_team):
     prediction["fallback"] = True
     prediction["message"] = "Données de démonstration utilisées car API-Football est indisponible."
 
-    return enrich_with_value_bet(prediction)
+    return enrich_with_value_bet(
+        prediction,
+        home_team,
+        away_team,
+        selected_bet,
+        selected_odd
+    )
 
 
-def get_prediction_for_match(home_team, away_team, league_id=39, season=2024):
+def get_prediction_for_match(
+    home_team,
+    away_team,
+    league_id=39,
+    season=2024,
+    selected_bet=None,
+    selected_odd=None
+):
     home_id = get_team_id(home_team)
     away_id = get_team_id(away_team)
 
     if home_id is None or away_id is None:
         if DEV_FALLBACK_ENABLED:
-            return get_fallback_prediction(home_team, away_team)
+            return get_fallback_prediction(home_team, away_team, selected_bet, selected_odd)
         return None
 
     home_stats = get_team_statistics(home_id, league_id, season)
@@ -97,7 +135,7 @@ def get_prediction_for_match(home_team, away_team, league_id=39, season=2024):
 
     if home_stats is None or away_stats is None:
         if DEV_FALLBACK_ENABLED:
-            return get_fallback_prediction(home_team, away_team)
+            return get_fallback_prediction(home_team, away_team, selected_bet, selected_odd)
         return None
 
     home_last_matches = get_last_matches(home_id, league_id, season)
@@ -116,4 +154,10 @@ def get_prediction_for_match(home_team, away_team, league_id=39, season=2024):
     prediction["fallback"] = False
     prediction["message"] = "Données réelles API-Football utilisées."
 
-    return enrich_with_value_bet(prediction)
+    return enrich_with_value_bet(
+        prediction,
+        home_team,
+        away_team,
+        selected_bet,
+        selected_odd
+    )

@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 
@@ -77,9 +76,34 @@ if not df.empty:
     matches = sorted(df["Match"].unique())
     selected_match = st.selectbox("Match", matches)
 
-    if st.button("🔍 Analyser le match"):
-        st.session_state["match"] = selected_match
-        st.switch_page("pages/match.py")
+    match_rows = df[df["Match"] == selected_match]
+
+    if not match_rows.empty:
+        bets = [
+            f"{row['Pari']} @ {row['Cote']}"
+            for _, row in match_rows.iterrows()
+        ]
+
+        selected_bet_label = st.selectbox("Pari à analyser", bets)
+
+        selected_index = bets.index(selected_bet_label)
+        selected_row = match_rows.iloc[selected_index]
+
+        st.info(
+            f"Pari sélectionné : {selected_row['Pari']} "
+            f"à la cote {selected_row['Cote']}"
+        )
+
+        if st.button("🔍 Analyser le match"):
+            st.session_state["match"] = selected_match
+            st.session_state["selected_bet"] = selected_row["Pari"]
+            st.session_state["selected_odd"] = float(selected_row["Cote"])
+            st.session_state["bookmaker_probability"] = selected_row.get(
+                "Proba bookmaker",
+                None
+            )
+
+            st.switch_page("pages/match.py")
 
     st.dataframe(df, width="stretch")
 else:

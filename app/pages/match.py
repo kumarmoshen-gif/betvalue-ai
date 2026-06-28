@@ -33,7 +33,15 @@ except ValueError:
     st.error("Format du match invalide.")
     st.stop()
 
-prediction = get_prediction_for_match(home_team, away_team)
+selected_bet = st.session_state.get("selected_bet")
+selected_odd = st.session_state.get("selected_odd")
+
+prediction = get_prediction_for_match(
+    home_team,
+    away_team,
+    selected_bet=selected_bet,
+    selected_odd=selected_odd
+)
 
 if prediction is None:
     st.warning("Analyse IA indisponible pour ce match.")
