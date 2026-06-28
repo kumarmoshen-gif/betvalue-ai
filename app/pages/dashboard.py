@@ -6,7 +6,6 @@ sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from database.repository import load_prediction_history
 
@@ -52,20 +51,18 @@ st.subheader("📊 Répartition des décisions IA")
 
 decision_counts = df["decision"].value_counts()
 
-fig, ax = plt.subplots(figsize=(8, 3))
+col1, col2, col3 = st.columns(3)
 
-ax.barh(
-    decision_counts.index,
-    decision_counts.values,
+value_forte = decision_counts.get("🟢 VALUE FORTE", 0)
+value = decision_counts.get("🟡 VALUE", 0) + decision_counts.get("🟢 VALUE", 0)
+pas_value = (
+    decision_counts.get("🔴 PAS DE VALEUR", 0)
+    + decision_counts.get("🔴 PAS DE VALUE", 0)
 )
 
-ax.set_xlabel("Nombre de paris")
-ax.set_ylabel("Décision")
-
-for i, value in enumerate(decision_counts.values):
-    ax.text(value + 0.05, i, str(value), va="center")
-
-st.pyplot(fig)
+col1.metric("🟢 VALUE FORTE", value_forte)
+col2.metric("🟡 VALUE", value)
+col3.metric("🔴 PAS DE VALEUR", pas_value)
 
 st.divider()
 
