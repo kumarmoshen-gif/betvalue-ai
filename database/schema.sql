@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     api_id INTEGER UNIQUE,
-    name TEXT NOT NULL,
+    name TEXT,
     country TEXT,
     logo TEXT,
-    raw_data TEXT NOT NULL,
+    raw_data TEXT,
     updated_at TEXT
 );
 
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS team_statistics (
     team_api_id INTEGER,
     league_id INTEGER,
     season INTEGER,
-    data TEXT NOT NULL,
+    data TEXT,
     updated_at TEXT,
     UNIQUE(team_api_id, league_id, season)
 );
@@ -21,26 +21,23 @@ CREATE TABLE IF NOT EXISTS team_statistics (
 CREATE TABLE IF NOT EXISTS team_form (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     team_api_id INTEGER,
-    data TEXT NOT NULL,
+    league_id INTEGER,
+    season INTEGER,
+    data TEXT,
     updated_at TEXT,
-    UNIQUE(team_api_id)
+    UNIQUE(team_api_id, league_id, season)
 );
 
--- =====================================================
--- Historique des prédictions
--- =====================================================
-
 CREATE TABLE IF NOT EXISTS prediction_history (
-
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    created_at TEXT NOT NULL,
+    created_at TEXT,
 
-    match TEXT NOT NULL,
+    match TEXT,
 
-    home_team TEXT NOT NULL,
+    home_team TEXT,
 
-    away_team TEXT NOT NULL,
+    away_team TEXT,
 
     predicted_result TEXT,
 
@@ -60,5 +57,13 @@ CREATE TABLE IF NOT EXISTS prediction_history (
 
     decision TEXT,
 
-    fallback INTEGER DEFAULT 0
+    fallback INTEGER,
+
+    stake REAL DEFAULT 1,
+
+    result TEXT,
+
+    bet_won INTEGER,
+
+    profit REAL DEFAULT 0
 );
