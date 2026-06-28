@@ -57,9 +57,43 @@ def get_fake_form(team_level="strong"):
     }
 
 
+def get_predicted_result(prediction, home_team, away_team, selected_bet=None):
+    """
+    Détermine le résultat prédit à enregistrer dans l'historique.
+
+    Priorité :
+    1. Si un pari est sélectionné depuis l'interface, on l'utilise.
+    2. Sinon, on prend le résultat avec la plus forte probabilité IA.
+    """
+
+    if selected_bet:
+        return selected_bet
+
+    probabilities = {
+        home_team: prediction["home"],
+        "Draw": prediction["draw"],
+        away_team: prediction["away"],
+    }
+
+    return max(probabilities, key=probabilities.get)
+
+
 def get_ai_probability_for_bet(prediction, selected_bet, home_team, away_team):
     if selected_bet is None:
-        return prediction["home"]
+        predicted_result = get_predicted_result(
+            prediction,
+            home_team,
+            away_team,
+            selected_bet,
+        )
+
+        if predicted_result == home_team:
+            return prediction["home"]
+
+        if predicted_result == away_team:
+            return prediction["away"]
+
+        return prediction["draw"]
 
     bet = str(selected_bet).lower()
 
@@ -96,7 +130,13 @@ def enrich_with_value_bet(
         odd
     )
 
-    prediction["selected_bet"] = selected_bet
+    prediction["selected_bet"] = get_predicted_result(
+        prediction,
+        home_team,
+        away_team,
+        selected_bet,
+    )
+
     prediction["selected_odd"] = odd
 
     return prediction
@@ -106,10 +146,18 @@ def prepare_prediction_for_history(
     prediction,
     home_team,
     away_team,
+    selected_bet=None,
 ):
     prediction["match"] = f"{home_team} - {away_team}"
     prediction["home_team"] = home_team
     prediction["away_team"] = away_team
+
+    prediction["predicted_result"] = get_predicted_result(
+        prediction,
+        home_team,
+        away_team,
+        selected_bet,
+    )
 
     return prediction
 
@@ -151,7 +199,8 @@ def get_fallback_prediction(
     prediction = prepare_prediction_for_history(
         prediction,
         home_team,
-        away_team
+        away_team,
+        selected_bet
     )
 
     save_prediction_safely(prediction)
@@ -220,7 +269,8 @@ def get_prediction_for_match(
     prediction = prepare_prediction_for_history(
         prediction,
         home_team,
-        away_team
+        away_team,
+        selected_bet
     )
 
     save_prediction_safely(prediction)
