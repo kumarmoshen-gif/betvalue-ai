@@ -33,3 +33,4 @@ logs/
 # Base de données SQLite locale
 # ==========================
 database/betvalue.db
+database/database.db
