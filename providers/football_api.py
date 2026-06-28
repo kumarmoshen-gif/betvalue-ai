@@ -1,8 +1,11 @@
 import os
+import logging
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("FOOTBALL_API_KEY")
 BASE_URL = "https://v3.football.api-sports.io"
@@ -23,6 +26,7 @@ def get_team_statistics(team_id, league_id=39, season=2024):
     cached_stats = load_team_statistics(team_id, league_id, season)
 
     if cached_stats is not None:
+        logger.info("Stats chargées depuis SQLite")
         return cached_stats
 
     key = (team_id, league_id, season)
@@ -41,19 +45,17 @@ def get_team_statistics(team_id, league_id=39, season=2024):
     response = requests.get(url, headers=HEADERS, params=params)
 
     if response.status_code == 429:
+        logger.warning("API LIMIT sur teams/statistics")
         return None
 
     response.raise_for_status()
 
-    result = response.json()
-
-    if result.get("errors"):
-        return None
-
-    stats = result["response"]
+    stats = response.json()["response"]
 
     stats_cache[key] = stats
     save_team_statistics(team_id, league_id, season, stats)
+
+    logger.info("Stats chargées depuis API puis sauvegardées SQLite")
 
     return stats
 
@@ -67,6 +69,7 @@ def search_team(team_name):
     cached_team = load_team_by_name(team_name)
 
     if cached_team is not None:
+        logger.info(f"Équipe chargée depuis SQLite : {team_name}")
         team_cache[team_name] = cached_team
         return cached_team
 
@@ -79,6 +82,7 @@ def search_team(team_name):
     response = requests.get(url, headers=HEADERS, params=params)
 
     if response.status_code == 429:
+        logger.warning("API LIMIT sur teams/search")
         return None
 
     response.raise_for_status()
@@ -86,11 +90,13 @@ def search_team(team_name):
     result = response.json()
 
     if result.get("errors"):
+        logger.error(f"Erreur API : {result['errors']}")
         return None
 
     teams = result["response"]
 
     if len(teams) == 0:
+        logger.warning(f"Aucune équipe trouvée : {team_name}")
         team_cache[team_name] = None
         return None
 
@@ -99,6 +105,8 @@ def search_team(team_name):
     save_team(team)
 
     team_cache[team_name] = team
+
+    logger.info(f"Équipe chargée depuis API puis sauvegardée SQLite : {team_name}")
 
     return team
 
@@ -162,6 +170,7 @@ def get_last_matches(team_id, league_id=None, season=None, last=5):
     response = requests.get(url, headers=HEADERS, params=params)
 
     if response.status_code == 429:
+        logger.warning("API LIMIT sur fixtures")
         return []
 
     response.raise_for_status()
@@ -169,6 +178,7 @@ def get_last_matches(team_id, league_id=None, season=None, last=5):
     result = response.json()
 
     if result.get("errors"):
+        logger.error(f"Erreur API fixtures : {result['errors']}")
         return []
 
     matches = result["response"]
