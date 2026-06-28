@@ -93,10 +93,6 @@ def load_team_statistics(team_api_id, league_id, season):
     return json.loads(row["data"])
 
 
-# ==========================================================
-# Prediction History
-# ==========================================================
-
 def save_prediction(prediction):
     conn = get_connection()
 
@@ -175,10 +171,6 @@ def load_prediction_history(limit=100):
 
 
 def load_pending_predictions(limit=100):
-    """
-    Retourne les prédictions qui n'ont pas encore de résultat.
-    """
-
     conn = get_connection()
 
     rows = conn.execute(
@@ -251,24 +243,39 @@ def update_prediction_result(prediction_id, result, stake=1):
         "bet_won": bet_won,
         "profit": profit,
     }
-def load_pending_predictions(limit=100):
-    """
-    Retourne les prédictions qui n'ont pas encore de résultat.
-    """
 
+
+def load_performance_stats():
     conn = get_connection()
 
     rows = conn.execute(
         """
-        SELECT *
+        SELECT stake, bet_won, profit
         FROM prediction_history
-        WHERE result IS NULL
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (limit,),
+        WHERE result IS NOT NULL
+        """
     ).fetchall()
 
     conn.close()
 
-    return [dict(row) for row in rows]
+    bets = [dict(row) for row in rows]
+
+    total_bets = len(bets)
+    won_bets = sum(1 for bet in bets if bet["bet_won"] == 1)
+    lost_bets = sum(1 for bet in bets if bet["bet_won"] == 0)
+
+    total_stake = sum(float(bet["stake"] or 0) for bet in bets)
+    total_profit = sum(float(bet["profit"] or 0) for bet in bets)
+
+    roi = round((total_profit / total_stake) * 100, 2) if total_stake else 0
+    hit_rate = round((won_bets / total_bets) * 100, 2) if total_bets else 0
+
+    return {
+        "total_bets": total_bets,
+        "won_bets": won_bets,
+        "lost_bets": lost_bets,
+        "total_stake": round(total_stake, 2),
+        "total_profit": round(total_profit, 2),
+        "roi": roi,
+        "hit_rate": hit_rate,
+    }
