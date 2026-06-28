@@ -5,7 +5,15 @@ def compute_home_advantage_score(is_home=True):
     Extérieur : neutre
     """
 
-    if is_home:
-        return 65
+from config import HOME_ADVANTAGE_SCORE, AWAY_ADVANTAGE_SCORE
 
-    return 50
+
+def compute_home_advantage_score(is_home=True):
+    """
+    Score d'avantage du terrain.
+    """
+
+    if is_home:
+        return HOME_ADVANTAGE_SCORE
+
+    return AWAY_ADVANTAGE_SCORE

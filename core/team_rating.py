@@ -3,16 +3,25 @@ from core.defense_score import compute_defense_score
 from core.recent_form_score import compute_recent_form_score
 from core.home_advantage import compute_home_advantage_score
 
+from config import (
+    ATTACK_WEIGHT,
+    DEFENSE_WEIGHT,
+    FORM_WEIGHT,
+    HOME_WEIGHT,
+)
+
 
 def compute_team_rating(stats, form=None, is_home=False):
     """
-    Calcule une note globale sur 100.
+    Calcule la note globale d'une équipe sur 100.
 
-    Pondération actuelle :
-    - Attaque : 35 %
-    - Défense : 30 %
-    - Forme : 25 %
-    - Avantage domicile : 10 %
+    La note est composée de :
+    - Attaque
+    - Défense
+    - Forme récente
+    - Avantage domicile
+
+    Les pondérations sont définies dans config.py.
     """
 
     attack = compute_attack_score(stats)
@@ -21,10 +30,10 @@ def compute_team_rating(stats, form=None, is_home=False):
     home_bonus = compute_home_advantage_score(is_home)
 
     rating = (
-        attack * 0.35
-        + defense * 0.30
-        + recent_form * 0.25
-        + home_bonus * 0.10
+        attack * ATTACK_WEIGHT
+        + defense * DEFENSE_WEIGHT
+        + recent_form * FORM_WEIGHT
+        + home_bonus * HOME_WEIGHT
     )
 
     return {
