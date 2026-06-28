@@ -18,6 +18,17 @@ last_matches_cache = {}
 
 
 def get_team_statistics(team_id, league_id=39, season=2024):
+    from database.repository import (
+        load_team_statistics,
+        save_team_statistics,
+    )
+
+    cached_stats = load_team_statistics(team_id, league_id, season)
+
+    if cached_stats is not None:
+        print("Stats chargées depuis SQLite")
+        return cached_stats
+
     key = (team_id, league_id, season)
 
     if key in stats_cache:
@@ -40,7 +51,11 @@ def get_team_statistics(team_id, league_id=39, season=2024):
     response.raise_for_status()
 
     stats = response.json()["response"]
+
     stats_cache[key] = stats
+    save_team_statistics(team_id, league_id, season, stats)
+
+    print("Stats chargées depuis API puis sauvegardées SQLite")
 
     return stats
 
