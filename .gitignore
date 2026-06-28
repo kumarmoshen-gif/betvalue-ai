@@ -1,0 +1,21 @@
+# Environnement virtuel
+.venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Variables d'environnement
+.env
+
+# VS Code
+.vscode/
+
+# Logs
+logs/
+
+# Base SQLite
+*.db
+
+# Fichiers temporaires
+*.tmp
