@@ -14,6 +14,7 @@ HEADERS = {
 stats_cache = {}
 team_cache = {}
 probability_cache = {}
+last_matches_cache = {}
 
 
 def get_team_statistics(team_id, league_id=39, season=2024):
@@ -107,7 +108,13 @@ def get_match_probability(home_team, away_team, league_id=39, season=2024):
     probability_cache[key] = probability
 
     return probability
+
+
 def get_last_matches(team_id, league_id=39, season=2024):
+    key = (team_id, league_id, season)
+
+    if key in last_matches_cache:
+        return last_matches_cache[key]
 
     url = f"{BASE_URL}/fixtures"
 
@@ -125,4 +132,8 @@ def get_last_matches(team_id, league_id=39, season=2024):
 
     response.raise_for_status()
 
-    return response.json()["response"]
+    matches = response.json()["response"]
+
+    last_matches_cache[key] = matches
+
+    return matches
