@@ -40,9 +40,12 @@ if prediction is None:
     st.info("Cause probable : quota API-Football atteint ou équipe non trouvée.")
     st.stop()
 
+if prediction.get("fallback"):
+    st.warning(prediction.get("message"))
+
 st.divider()
 
-st.subheader("🤖 Prédiction IA V2.1")
+st.subheader("🤖 Prédiction IA V2.2")
 
 c1, c2, c3 = st.columns(3)
 c1.metric(f"🏠 {home_team}", f"{prediction['home']} %")
@@ -66,6 +69,28 @@ elif confidence >= 60:
     st.warning("🟡 Confiance moyenne")
 else:
     st.error("🔴 Match très incertain")
+
+st.divider()
+
+st.subheader("💰 Value Bet")
+
+value_bet = prediction.get("value_bet")
+
+if value_bet:
+    v1, v2, v3 = st.columns(3)
+
+    v1.metric("Cote bookmaker", value_bet["odd"])
+    v2.metric("Proba bookmaker", f"{value_bet['bookmaker_probability']} %")
+    v3.metric("Value", f"{value_bet['value']} %")
+
+    st.write(f"Probabilité IA : {value_bet['ai_probability']} %")
+
+    if value_bet["value"] >= 5:
+        st.success(value_bet["decision"])
+    else:
+        st.error(value_bet["decision"])
+else:
+    st.info("Aucune information Value Bet disponible.")
 
 st.divider()
 
@@ -182,4 +207,4 @@ elif rating_diff < -10:
 else:
     st.write("⚖️ Les deux équipes sont assez proches selon le modèle IA.")
 
-st.caption("BetValue AI V2.1 • Analyse basée sur attaque, défense, forme récente, avantage domicile, confiance IA et moteur de probabilités.")
+st.caption("BetValue AI V2.2 • Analyse basée sur attaque, défense, forme récente, avantage domicile, confiance IA, probabilités et Value Bet.")
