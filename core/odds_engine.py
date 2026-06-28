@@ -7,18 +7,6 @@ def expected_value(odd: float, model_probability: float) -> float:
     return round(((probability * odd) - 1) * 100, 2)
 
 
-def betvalue_score(ev: float, odd: float) -> int:
-    score = 50
-    score += min(ev * 3, 35) if ev > 0 else max(ev * 2, -35)
-
-    if 1.50 <= odd <= 4.00:
-        score += 10
-    elif odd > 8:
-        score -= 10
-
-    return int(max(0, min(100, round(score))))
-
-
 def estimate_light_probability(odd: float, selection: str) -> float:
     bookmaker_probability = implied_probability(odd)
 
@@ -37,13 +25,31 @@ def estimate_light_probability(odd: float, selection: str) -> float:
     return max(1, min(99, round(bookmaker_probability + adjustment, 2)))
 
 
+def betvalue_score(ev: float, odd: float) -> int:
+    score = 50
+
+    if ev > 0:
+        score += min(ev * 3, 35)
+    else:
+        score += max(ev * 2, -35)
+
+    if 1.50 <= odd <= 4.00:
+        score += 10
+    elif odd > 8:
+        score -= 10
+
+    return int(max(0, min(100, round(score))))
+
+
 def analyse_odds(rows):
     analysed = []
 
     for row in rows:
         odd = float(row["Cote"])
+        selection = row["Pari"]
+
         bookmaker_probability = implied_probability(odd)
-        model_probability = estimate_light_probability(odd, row["Pari"])
+        model_probability = estimate_light_probability(odd, selection)
 
         ev = expected_value(odd, model_probability)
         score = betvalue_score(ev, odd)

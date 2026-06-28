@@ -34,6 +34,7 @@ def get_team_statistics(team_id, league_id=39, season=2024):
     response = requests.get(url, headers=HEADERS, params=params)
 
     if response.status_code == 429:
+        print("API LIMIT sur teams/statistics")
         return None
 
     response.raise_for_status()
@@ -56,7 +57,16 @@ def search_team(team_name):
 
     response = requests.get(url, headers=HEADERS, params=params)
 
+    print("=" * 60)
+    print("Recherche équipe :", team_name)
+    print("Status :", response.status_code)
+    print("URL :", response.url)
+    print("Réponse API :")
+    print(response.text[:1000])
+    print("=" * 60)
+
     if response.status_code == 429:
+        print("API LIMIT ATTEINTE")
         return None
 
     response.raise_for_status()
@@ -64,8 +74,11 @@ def search_team(team_name):
     teams = response.json()["response"]
 
     if len(teams) == 0:
+        print("Aucune équipe trouvée.")
         team_cache[team_name] = None
         return None
+
+    print("Equipe trouvée :", teams[0]["team"]["name"])
 
     team_cache[team_name] = teams[0]
     return teams[0]
@@ -129,12 +142,25 @@ def get_last_matches(team_id, league_id=None, season=None, last=5):
 
     response = requests.get(url, headers=HEADERS, params=params)
 
+    print("=" * 60)
+    print("Récupération des derniers matchs")
+    print("Team ID :", team_id)
+    print("Status :", response.status_code)
+    print("URL :", response.url)
+    print("Réponse API :")
+    print(response.text[:1000])
+    print("=" * 60)
+
     if response.status_code == 429:
+        print("API LIMIT sur fixtures")
         return []
 
     response.raise_for_status()
 
     matches = response.json()["response"]
+
+    print("Nombre de matchs récupérés :", len(matches))
+
     last_matches_cache[key] = matches
 
     return matches
