@@ -10,6 +10,7 @@ import pandas as pd
 from database.repository import (
     load_prediction_history,
     load_performance_stats,
+    load_bankroll_history,
 )
 
 st.set_page_config(
@@ -22,6 +23,7 @@ st.title("📊 Tableau de bord BetValue AI")
 
 history = load_prediction_history(1000)
 performance = load_performance_stats()
+bankroll_history = load_bankroll_history()
 
 if not history:
     st.info("Aucune donnée disponible.")
@@ -33,34 +35,29 @@ st.subheader("💼 Performance des paris")
 
 p1, p2, p3, p4 = st.columns(4)
 
-p1.metric(
-    "💰 Profit total",
-    f"{performance['total_profit']:.2f} u".replace(".", ","),
-)
-
-p2.metric(
-    "📈 ROI",
-    f"{performance['roi']:.2f} %".replace(".", ","),
-)
-
-p3.metric(
-    "🎯 Réussite",
-    f"{performance['hit_rate']:.2f} %".replace(".", ","),
-)
-
-p4.metric(
-    "📊 Paris terminés",
-    performance["total_bets"],
-)
+p1.metric("💰 Profit total", f"{performance['total_profit']:.2f} u".replace(".", ","))
+p2.metric("📈 ROI", f"{performance['roi']:.2f} %".replace(".", ","))
+p3.metric("🎯 Réussite", f"{performance['hit_rate']:.2f} %".replace(".", ","))
+p4.metric("📊 Paris terminés", performance["total_bets"])
 
 p5, p6, p7 = st.columns(3)
 
 p5.metric("✅ Gagnés", performance["won_bets"])
 p6.metric("❌ Perdus", performance["lost_bets"])
-p7.metric(
-    "💵 Mises totales",
-    f"{performance['total_stake']:.2f} u".replace(".", ","),
-)
+p7.metric("💵 Mises totales", f"{performance['total_stake']:.2f} u".replace(".", ","))
+
+st.divider()
+
+st.subheader("💹 Évolution de la bankroll")
+
+if bankroll_history:
+    bankroll_df = pd.DataFrame(bankroll_history)
+    bankroll_df["created_at"] = pd.to_datetime(bankroll_df["created_at"])
+    bankroll_df = bankroll_df.set_index("created_at")
+
+    st.line_chart(bankroll_df["bankroll"])
+else:
+    st.info("Aucun pari terminé.")
 
 st.divider()
 
@@ -111,8 +108,8 @@ st.subheader("🏆 Top 10 des meilleurs Value Bet")
 
 top10 = (
     df.sort_values("value", ascending=False)
-      .head(10)
-      .copy()
+    .head(10)
+    .copy()
 )
 
 top10 = top10.rename(
@@ -146,5 +143,5 @@ st.dataframe(
 st.divider()
 
 st.caption(
-    "BetValue AI V4 • Tableau de bord alimenté automatiquement par l'historique SQLite."
+    "BetValue AI V5 • Dashboard avec performance, ROI et bankroll."
 )
