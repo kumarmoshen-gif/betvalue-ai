@@ -18,10 +18,7 @@ last_matches_cache = {}
 
 
 def get_team_statistics(team_id, league_id=39, season=2024):
-    from database.repository import (
-        load_team_statistics,
-        save_team_statistics,
-    )
+    from database.repository import load_team_statistics, save_team_statistics
 
     cached_stats = load_team_statistics(team_id, league_id, season)
 
@@ -61,8 +58,17 @@ def get_team_statistics(team_id, league_id=39, season=2024):
 
 
 def search_team(team_name):
+    from database.repository import load_team_by_name, save_team
+
     if team_name in team_cache:
         return team_cache[team_name]
+
+    cached_team = load_team_by_name(team_name)
+
+    if cached_team is not None:
+        print(f"Équipe chargée depuis SQLite : {team_name}")
+        team_cache[team_name] = cached_team
+        return cached_team
 
     url = f"{BASE_URL}/teams"
 
@@ -72,31 +78,34 @@ def search_team(team_name):
 
     response = requests.get(url, headers=HEADERS, params=params)
 
-    print("=" * 60)
-    print("Recherche équipe :", team_name)
-    print("Status :", response.status_code)
-    print("URL :", response.url)
-    print("Réponse API :")
-    print(response.text[:1000])
-    print("=" * 60)
-
     if response.status_code == 429:
-        print("API LIMIT ATTEINTE")
+        print("API LIMIT sur teams/search")
         return None
 
     response.raise_for_status()
 
-    teams = response.json()["response"]
+    result = response.json()
+
+    if result.get("errors"):
+        print("Erreur API :", result["errors"])
+        return None
+
+    teams = result["response"]
 
     if len(teams) == 0:
-        print("Aucune équipe trouvée.")
+        print(f"Aucune équipe trouvée : {team_name}")
         team_cache[team_name] = None
         return None
 
-    print("Equipe trouvée :", teams[0]["team"]["name"])
+    team = teams[0]
 
-    team_cache[team_name] = teams[0]
-    return teams[0]
+    save_team(team)
+
+    team_cache[team_name] = team
+
+    print(f"Équipe chargée depuis API puis sauvegardée SQLite : {team_name}")
+
+    return team
 
 
 def get_team_id(team_name):
@@ -157,24 +166,19 @@ def get_last_matches(team_id, league_id=None, season=None, last=5):
 
     response = requests.get(url, headers=HEADERS, params=params)
 
-    print("=" * 60)
-    print("Récupération des derniers matchs")
-    print("Team ID :", team_id)
-    print("Status :", response.status_code)
-    print("URL :", response.url)
-    print("Réponse API :")
-    print(response.text[:1000])
-    print("=" * 60)
-
     if response.status_code == 429:
         print("API LIMIT sur fixtures")
         return []
 
     response.raise_for_status()
 
-    matches = response.json()["response"]
+    result = response.json()
 
-    print("Nombre de matchs récupérés :", len(matches))
+    if result.get("errors"):
+        print("Erreur API fixtures :", result["errors"])
+        return []
+
+    matches = result["response"]
 
     last_matches_cache[key] = matches
 
