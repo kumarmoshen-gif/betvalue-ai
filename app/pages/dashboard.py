@@ -7,7 +7,10 @@ sys.path.append(str(ROOT_DIR))
 import streamlit as st
 import pandas as pd
 
-from database.repository import load_prediction_history
+from database.repository import (
+    load_prediction_history,
+    load_performance_stats,
+)
 
 st.set_page_config(
     page_title="Dashboard",
@@ -18,12 +21,50 @@ st.set_page_config(
 st.title("📊 Tableau de bord BetValue AI")
 
 history = load_prediction_history(1000)
+performance = load_performance_stats()
 
 if not history:
     st.info("Aucune donnée disponible.")
     st.stop()
 
 df = pd.DataFrame(history)
+
+st.subheader("💼 Performance des paris")
+
+p1, p2, p3, p4 = st.columns(4)
+
+p1.metric(
+    "💰 Profit total",
+    f"{performance['total_profit']:.2f} u".replace(".", ","),
+)
+
+p2.metric(
+    "📈 ROI",
+    f"{performance['roi']:.2f} %".replace(".", ","),
+)
+
+p3.metric(
+    "🎯 Réussite",
+    f"{performance['hit_rate']:.2f} %".replace(".", ","),
+)
+
+p4.metric(
+    "📊 Paris terminés",
+    performance["total_bets"],
+)
+
+p5, p6, p7 = st.columns(3)
+
+p5.metric("✅ Gagnés", performance["won_bets"])
+p6.metric("❌ Perdus", performance["lost_bets"])
+p7.metric(
+    "💵 Mises totales",
+    f"{performance['total_stake']:.2f} u".replace(".", ","),
+)
+
+st.divider()
+
+st.subheader("🤖 Analyse IA")
 
 c1, c2, c3, c4 = st.columns(4)
 
