@@ -42,12 +42,30 @@ if prediction is None:
 
 st.divider()
 
-st.subheader("🤖 Prédiction IA V2")
+st.subheader("🤖 Prédiction IA V2.1")
 
 c1, c2, c3 = st.columns(3)
 c1.metric(f"🏠 {home_team}", f"{prediction['home']} %")
 c2.metric("🤝 Match nul", f"{prediction['draw']} %")
 c3.metric(f"🚩 {away_team}", f"{prediction['away']} %")
+
+st.divider()
+
+st.subheader("⭐ Niveau de confiance")
+
+confidence = prediction["confidence"]
+
+st.metric("Confiance du moteur IA", f"{confidence} / 100")
+st.progress(confidence / 100)
+
+if confidence >= 85:
+    st.success("🟢 Très forte confiance")
+elif confidence >= 70:
+    st.info("🔵 Bonne confiance")
+elif confidence >= 60:
+    st.warning("🟡 Confiance moyenne")
+else:
+    st.error("🔴 Match très incertain")
 
 st.divider()
 
@@ -61,22 +79,34 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown(f"### 🏠 {home_team}")
     st.metric("Note globale", f"{home_rating['rating']} / 100")
+
     st.write(f"Attaque : {home_rating['attack']} / 100")
     st.progress(home_rating["attack"] / 100)
+
     st.write(f"Défense : {home_rating['defense']} / 100")
     st.progress(home_rating["defense"] / 100)
+
     st.write(f"Forme : {home_rating['form']} / 100")
     st.progress(home_rating["form"] / 100)
+
+    st.write(f"🏟️ Domicile : {home_rating['home']} / 100")
+    st.progress(home_rating["home"] / 100)
 
 with col2:
     st.markdown(f"### 🚩 {away_team}")
     st.metric("Note globale", f"{away_rating['rating']} / 100")
+
     st.write(f"Attaque : {away_rating['attack']} / 100")
     st.progress(away_rating["attack"] / 100)
+
     st.write(f"Défense : {away_rating['defense']} / 100")
     st.progress(away_rating["defense"] / 100)
+
     st.write(f"Forme : {away_rating['form']} / 100")
     st.progress(away_rating["form"] / 100)
+
+    st.write(f"✈️ Extérieur : {away_rating['home']} / 100")
+    st.progress(away_rating["home"] / 100)
 
 st.divider()
 
@@ -121,6 +151,8 @@ st.divider()
 
 st.subheader("📌 Lecture rapide")
 
+st.metric("Écart de niveau", f"{prediction['diff']} points")
+
 best_result = max(
     {
         "home": prediction["home"],
@@ -150,4 +182,4 @@ elif rating_diff < -10:
 else:
     st.write("⚖️ Les deux équipes sont assez proches selon le modèle IA.")
 
-st.caption("Analyse basée sur le moteur IA V2 : attaque, défense, forme récente et avantage domicile.")
+st.caption("BetValue AI V2.1 • Analyse basée sur attaque, défense, forme récente, avantage domicile, confiance IA et moteur de probabilités.")
