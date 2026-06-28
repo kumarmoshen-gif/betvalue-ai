@@ -25,3 +25,40 @@ CREATE TABLE IF NOT EXISTS team_form (
     updated_at TEXT,
     UNIQUE(team_api_id)
 );
+
+-- =====================================================
+-- Historique des prédictions
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS prediction_history (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    created_at TEXT NOT NULL,
+
+    match TEXT NOT NULL,
+
+    home_team TEXT NOT NULL,
+
+    away_team TEXT NOT NULL,
+
+    predicted_result TEXT,
+
+    home_probability REAL,
+
+    draw_probability REAL,
+
+    away_probability REAL,
+
+    confidence INTEGER,
+
+    odd REAL,
+
+    bookmaker_probability REAL,
+
+    value REAL,
+
+    decision TEXT,
+
+    fallback INTEGER DEFAULT 0
+);

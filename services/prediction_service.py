@@ -7,10 +7,12 @@ from providers.football_api import (
 from core.team_form import compute_team_form
 from core.match_predictor_v2 import predict_match_v2
 from core.value_bet import compute_value_bet
+from database.repository import save_prediction
+
+from config import DEFAULT_LEAGUE, DEFAULT_SEASON, DEFAULT_ODD
 
 
 DEV_FALLBACK_ENABLED = True
-DEMO_HOME_ODD = 2.10
 
 
 def get_fake_stats(team_level="strong"):
@@ -73,8 +75,14 @@ def get_ai_probability_for_bet(prediction, selected_bet, home_team, away_team):
     return prediction["home"]
 
 
-def enrich_with_value_bet(prediction, home_team, away_team, selected_bet=None, selected_odd=None):
-    odd = selected_odd if selected_odd else DEMO_HOME_ODD
+def enrich_with_value_bet(
+    prediction,
+    home_team,
+    away_team,
+    selected_bet=None,
+    selected_odd=None
+):
+    odd = selected_odd if selected_odd else DEFAULT_ODD
 
     ai_probability = get_ai_probability_for_bet(
         prediction,
@@ -94,7 +102,31 @@ def enrich_with_value_bet(prediction, home_team, away_team, selected_bet=None, s
     return prediction
 
 
-def get_fallback_prediction(home_team, away_team, selected_bet=None, selected_odd=None):
+def prepare_prediction_for_history(
+    prediction,
+    home_team,
+    away_team,
+):
+    prediction["match"] = f"{home_team} - {away_team}"
+    prediction["home_team"] = home_team
+    prediction["away_team"] = away_team
+
+    return prediction
+
+
+def save_prediction_safely(prediction):
+    try:
+        save_prediction(prediction)
+    except Exception as error:
+        print(f"Erreur sauvegarde historique : {error}")
+
+
+def get_fallback_prediction(
+    home_team,
+    away_team,
+    selected_bet=None,
+    selected_odd=None
+):
     prediction = predict_match_v2(
         get_fake_stats("strong"),
         get_fake_stats("medium"),
@@ -103,9 +135,12 @@ def get_fallback_prediction(home_team, away_team, selected_bet=None, selected_od
     )
 
     prediction["fallback"] = True
-    prediction["message"] = "Données de démonstration utilisées car API-Football est indisponible."
+    prediction["message"] = (
+        "Données de démonstration utilisées car "
+        "API-Football est indisponible."
+    )
 
-    return enrich_with_value_bet(
+    prediction = enrich_with_value_bet(
         prediction,
         home_team,
         away_team,
@@ -113,12 +148,22 @@ def get_fallback_prediction(home_team, away_team, selected_bet=None, selected_od
         selected_odd
     )
 
+    prediction = prepare_prediction_for_history(
+        prediction,
+        home_team,
+        away_team
+    )
+
+    save_prediction_safely(prediction)
+
+    return prediction
+
 
 def get_prediction_for_match(
     home_team,
     away_team,
-    league_id=39,
-    season=2024,
+    league_id=DEFAULT_LEAGUE,
+    season=DEFAULT_SEASON,
     selected_bet=None,
     selected_odd=None
 ):
@@ -127,7 +172,12 @@ def get_prediction_for_match(
 
     if home_id is None or away_id is None:
         if DEV_FALLBACK_ENABLED:
-            return get_fallback_prediction(home_team, away_team, selected_bet, selected_odd)
+            return get_fallback_prediction(
+                home_team,
+                away_team,
+                selected_bet,
+                selected_odd
+            )
         return None
 
     home_stats = get_team_statistics(home_id, league_id, season)
@@ -135,7 +185,12 @@ def get_prediction_for_match(
 
     if home_stats is None or away_stats is None:
         if DEV_FALLBACK_ENABLED:
-            return get_fallback_prediction(home_team, away_team, selected_bet, selected_odd)
+            return get_fallback_prediction(
+                home_team,
+                away_team,
+                selected_bet,
+                selected_odd
+            )
         return None
 
     home_last_matches = get_last_matches(home_id, league_id, season)
@@ -154,10 +209,20 @@ def get_prediction_for_match(
     prediction["fallback"] = False
     prediction["message"] = "Données réelles API-Football utilisées."
 
-    return enrich_with_value_bet(
+    prediction = enrich_with_value_bet(
         prediction,
         home_team,
         away_team,
         selected_bet,
         selected_odd
     )
+
+    prediction = prepare_prediction_for_history(
+        prediction,
+        home_team,
+        away_team
+    )
+
+    save_prediction_safely(prediction)
+
+    return prediction
