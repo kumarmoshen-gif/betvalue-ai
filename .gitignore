@@ -1,47 +1,35 @@
+# ==========================
 # Environnement virtuel
+# ==========================
 .venv/
 
+# ==========================
 # Cache Python
+# ==========================
 __pycache__/
 *.py[cod]
 
+# ==========================
 # Variables d'environnement
+# ==========================
 .env
 
+# ==========================
 # VS Code
+# ==========================
 .vscode/
 
+# ==========================
 # Logs
+# ==========================
 logs/
 
-# Base SQLite
-*.db
-
+# ==========================
 # Fichiers temporaires
+# ==========================
 *.tmp
 
-# Environnement virtuel
-.venv/
-
-# Cache Python
-__pycache__/
-*.py[cod]
-
-# Base de données locale (optionnel)
+# ==========================
+# Base de données SQLite locale
+# ==========================
 database/betvalue.db
-
-# Variables d'environnement
-.
-
-# Environnement virtuel
-.venv/
-
-# Cache Python
-__pycache__/
-*.py[cod]
-
-# Base de données locale (optionnel)
-database/betvalue.db
-
-# Variables d'environnement
-.env
