@@ -251,3 +251,24 @@ def update_prediction_result(prediction_id, result, stake=1):
         "bet_won": bet_won,
         "profit": profit,
     }
+def load_pending_predictions(limit=100):
+    """
+    Retourne les prédictions qui n'ont pas encore de résultat.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM prediction_history
+        WHERE result IS NULL
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]
