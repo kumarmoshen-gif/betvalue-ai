@@ -174,6 +174,29 @@ def load_prediction_history(limit=100):
     return [dict(row) for row in rows]
 
 
+def load_pending_predictions(limit=100):
+    """
+    Retourne les prédictions qui n'ont pas encore de résultat.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT *
+        FROM prediction_history
+        WHERE result IS NULL
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
 def update_prediction_result(prediction_id, result, stake=1):
     conn = get_connection()
 
