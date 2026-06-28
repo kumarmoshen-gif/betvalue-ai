@@ -101,8 +101,6 @@ def get_match_probability(home_team, away_team, league_id=39, season=2024):
     from core.stats_model import estimate_probability
 
     probability = estimate_probability(home_stats, away_stats)
-
-    # Sécurité : aucune probabilité ne doit être extrême
     probability = max(5, min(95, probability))
 
     probability_cache[key] = probability
@@ -110,8 +108,8 @@ def get_match_probability(home_team, away_team, league_id=39, season=2024):
     return probability
 
 
-def get_last_matches(team_id, league_id=39, season=2024):
-    key = (team_id, league_id, season)
+def get_last_matches(team_id, league_id=None, season=None, last=5):
+    key = (team_id, league_id, season, last)
 
     if key in last_matches_cache:
         return last_matches_cache[key]
@@ -120,10 +118,14 @@ def get_last_matches(team_id, league_id=39, season=2024):
 
     params = {
         "team": team_id,
-        "league": league_id,
-        "season": season,
-        "last": 5
+        "last": last
     }
+
+    if league_id is not None:
+        params["league"] = league_id
+
+    if season is not None:
+        params["season"] = season
 
     response = requests.get(url, headers=HEADERS, params=params)
 
@@ -133,7 +135,6 @@ def get_last_matches(team_id, league_id=39, season=2024):
     response.raise_for_status()
 
     matches = response.json()["response"]
-
     last_matches_cache[key] = matches
 
     return matches
