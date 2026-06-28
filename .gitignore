@@ -19,3 +19,29 @@ logs/
 
 # Fichiers temporaires
 *.tmp
+
+# Environnement virtuel
+.venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Base de données locale (optionnel)
+database/betvalue.db
+
+# Variables d'environnement
+.
+
+# Environnement virtuel
+.venv/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+
+# Base de données locale (optionnel)
+database/betvalue.db
+
+# Variables d'environnement
+.env
