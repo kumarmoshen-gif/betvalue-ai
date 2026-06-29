@@ -1,5 +1,6 @@
-from database.database import initialize_database
+from migrate_database import migrate
 
-initialize_database()
 
-print("Base SQLite créée avec succès.")
+migrate()
+
+print("Base SQLite prete.")

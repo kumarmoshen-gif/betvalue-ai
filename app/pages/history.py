@@ -64,6 +64,8 @@ st.dataframe(
             "value",
             "decision",
             "fallback",
+            "fixture_api_id",
+            "settled_at",
         ]
     ],
     width="stretch",

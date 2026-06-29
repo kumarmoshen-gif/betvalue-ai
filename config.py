@@ -105,6 +105,11 @@ FALLBACK_CONFIDENCE = 80
 FALLBACK_HOME_RATING = 69.5
 FALLBACK_AWAY_RATING = 48.7
 
+# Les predictions fallback servent a garder l'interface utilisable
+# quand les APIs sont indisponibles. Elles ne doivent pas polluer
+# l'historique ni les performances par defaut.
+SAVE_FALLBACK_PREDICTIONS = False
+
 # =========================================================
 # Historique (V4)
 # =========================================================

@@ -13,6 +13,7 @@ def get_league_odds(sport_key: str, limit: int = 15):
                     data.append({
                         "Sport": "Football",
                         "Match": f'{event["home_team"]} - {event["away_team"]}',
+                        "Match date": event.get("commence_time"),
                         "Bookmaker": bookmaker["title"],
                         "Pari": outcome["name"],
                         "Cote": outcome["price"],

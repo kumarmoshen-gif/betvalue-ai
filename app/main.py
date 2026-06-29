@@ -14,6 +14,7 @@ import pandas as pd
 
 from core.odds_engine import analyse_odds
 from services.match_service import get_league_odds
+from config import DEFAULT_SEASON
 
 st.set_page_config(
     page_title="BetValue AI",
@@ -30,6 +31,14 @@ sports = {
     "Liga": "soccer_spain_la_liga",
     "Serie A": "soccer_italy_serie_a",
     "Bundesliga": "soccer_germany_bundesliga",
+}
+
+football_api_leagues = {
+    "Premier League": 39,
+    "Ligue 1": 61,
+    "Liga": 140,
+    "Serie A": 135,
+    "Bundesliga": 78,
 }
 
 col_a, col_b = st.columns(2)
@@ -107,8 +116,28 @@ if not df.empty:
         matches
     )
 
+    match_rows = df[df["Match"] == selected_match]
+    selected_bet_index = st.selectbox(
+        "Pari",
+        match_rows.index,
+        format_func=lambda index: (
+            f"{df.loc[index, 'Pari']} @ {df.loc[index, 'Cote']} "
+            f"({df.loc[index, 'Bookmaker']})"
+        ),
+    )
+
     if st.button("🔍 Analyser le match"):
+        selected_bet_row = df.loc[selected_bet_index]
+
         st.session_state["match"] = selected_match
+        st.session_state["selected_bet"] = selected_bet_row["Pari"]
+        st.session_state["selected_odd"] = float(selected_bet_row["Cote"])
+        st.session_state["bookmaker"] = selected_bet_row["Bookmaker"]
+        st.session_state["bet_type"] = "h2h"
+        st.session_state["league"] = selected_league
+        st.session_state["league_id"] = football_api_leagues[selected_league]
+        st.session_state["season"] = DEFAULT_SEASON
+        st.session_state["match_date"] = selected_bet_row.get("Match date")
         st.switch_page("pages/match.py")
 
     st.dataframe(

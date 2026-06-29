@@ -18,6 +18,7 @@ stats_cache = {}
 team_cache = {}
 probability_cache = {}
 last_matches_cache = {}
+fixtures_cache = {}
 
 
 def get_team_statistics(team_id, league_id=39, season=2024):
@@ -186,3 +187,57 @@ def get_last_matches(team_id, league_id=None, season=None, last=5):
     last_matches_cache[key] = matches
 
     return matches
+
+
+def get_fixtures(
+    league_id=None,
+    season=None,
+    date=None,
+    status=None,
+    team_id=None,
+    last=None,
+):
+    key = (league_id, season, date, status, team_id, last)
+
+    if key in fixtures_cache:
+        return fixtures_cache[key]
+
+    url = f"{BASE_URL}/fixtures"
+    params = {}
+
+    if league_id is not None:
+        params["league"] = league_id
+
+    if season is not None:
+        params["season"] = season
+
+    if date is not None:
+        params["date"] = date
+
+    if status is not None:
+        params["status"] = status
+
+    if team_id is not None:
+        params["team"] = team_id
+
+    if last is not None:
+        params["last"] = last
+
+    response = requests.get(url, headers=HEADERS, params=params)
+
+    if response.status_code == 429:
+        logger.warning("API LIMIT sur fixtures")
+        return []
+
+    response.raise_for_status()
+
+    result = response.json()
+
+    if result.get("errors"):
+        logger.error(f"Erreur API fixtures : {result['errors']}")
+        return []
+
+    fixtures = result["response"]
+    fixtures_cache[key] = fixtures
+
+    return fixtures

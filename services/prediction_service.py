@@ -7,9 +7,18 @@ from providers.football_api import (
 from core.team_form import compute_team_form
 from core.match_predictor_v2 import predict_match_v2
 from core.value_bet import compute_value_bet
-from database.repository import save_prediction
+from database.repository import (
+    load_team_form,
+    save_prediction,
+    save_team_form,
+)
 
-from config import DEFAULT_LEAGUE, DEFAULT_SEASON, DEFAULT_ODD
+from config import (
+    DEFAULT_LEAGUE,
+    DEFAULT_SEASON,
+    DEFAULT_ODD,
+    SAVE_FALLBACK_PREDICTIONS,
+)
 
 
 DEV_FALLBACK_ENABLED = True
@@ -162,6 +171,23 @@ def prepare_prediction_for_history(
     return prediction
 
 
+def add_prediction_metadata(
+    prediction,
+    league=None,
+    season=None,
+    match_date=None,
+    bookmaker=None,
+    bet_type=None,
+):
+    prediction["league"] = league
+    prediction["season"] = season
+    prediction["match_date"] = match_date
+    prediction["bookmaker"] = bookmaker
+    prediction["bet_type"] = bet_type
+
+    return prediction
+
+
 def save_prediction_safely(prediction):
     try:
         save_prediction(prediction)
@@ -169,11 +195,29 @@ def save_prediction_safely(prediction):
         print(f"Erreur sauvegarde historique : {error}")
 
 
+def get_cached_or_compute_team_form(team_id, league_id, season):
+    cached_form = load_team_form(team_id, league_id, season)
+
+    if cached_form is not None:
+        return cached_form
+
+    last_matches = get_last_matches(team_id, league_id, season)
+    form = compute_team_form(last_matches, team_id)
+    save_team_form(team_id, league_id, season, form)
+
+    return form
+
+
 def get_fallback_prediction(
     home_team,
     away_team,
     selected_bet=None,
-    selected_odd=None
+    selected_odd=None,
+    league=None,
+    season=None,
+    match_date=None,
+    bookmaker=None,
+    bet_type=None,
 ):
     prediction = predict_match_v2(
         get_fake_stats("strong"),
@@ -203,7 +247,17 @@ def get_fallback_prediction(
         selected_bet
     )
 
-    save_prediction_safely(prediction)
+    prediction = add_prediction_metadata(
+        prediction,
+        league,
+        season,
+        match_date,
+        bookmaker,
+        bet_type,
+    )
+
+    if SAVE_FALLBACK_PREDICTIONS:
+        save_prediction_safely(prediction)
 
     return prediction
 
@@ -214,7 +268,11 @@ def get_prediction_for_match(
     league_id=DEFAULT_LEAGUE,
     season=DEFAULT_SEASON,
     selected_bet=None,
-    selected_odd=None
+    selected_odd=None,
+    league=None,
+    match_date=None,
+    bookmaker=None,
+    bet_type=None,
 ):
     home_id = get_team_id(home_team)
     away_id = get_team_id(away_team)
@@ -225,7 +283,12 @@ def get_prediction_for_match(
                 home_team,
                 away_team,
                 selected_bet,
-                selected_odd
+                selected_odd,
+                league,
+                season,
+                match_date,
+                bookmaker,
+                bet_type,
             )
         return None
 
@@ -238,15 +301,17 @@ def get_prediction_for_match(
                 home_team,
                 away_team,
                 selected_bet,
-                selected_odd
+                selected_odd,
+                league,
+                season,
+                match_date,
+                bookmaker,
+                bet_type,
             )
         return None
 
-    home_last_matches = get_last_matches(home_id, league_id, season)
-    away_last_matches = get_last_matches(away_id, league_id, season)
-
-    home_form = compute_team_form(home_last_matches, home_id)
-    away_form = compute_team_form(away_last_matches, away_id)
+    home_form = get_cached_or_compute_team_form(home_id, league_id, season)
+    away_form = get_cached_or_compute_team_form(away_id, league_id, season)
 
     prediction = predict_match_v2(
         home_stats,
@@ -271,6 +336,15 @@ def get_prediction_for_match(
         home_team,
         away_team,
         selected_bet
+    )
+
+    prediction = add_prediction_metadata(
+        prediction,
+        league,
+        season,
+        match_date,
+        bookmaker,
+        bet_type,
     )
 
     save_prediction_safely(prediction)

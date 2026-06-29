@@ -6,9 +6,12 @@ sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 
-from providers.football_api import get_team_id, get_last_matches
-from core.team_form import compute_team_form
-from services.prediction_service import get_prediction_for_match
+from providers.football_api import get_team_id
+from services.prediction_service import (
+    get_cached_or_compute_team_form,
+    get_prediction_for_match,
+)
+from config import DEFAULT_LEAGUE, DEFAULT_SEASON
 
 st.set_page_config(
     page_title="Analyse du match",
@@ -35,12 +38,25 @@ except ValueError:
 
 selected_bet = st.session_state.get("selected_bet")
 selected_odd = st.session_state.get("selected_odd")
+bookmaker = st.session_state.get("bookmaker")
+bet_type = st.session_state.get("bet_type")
+league = st.session_state.get("league")
+league_id = st.session_state.get("league_id")
+season = st.session_state.get("season", DEFAULT_SEASON)
+match_date = st.session_state.get("match_date")
+effective_league_id = league_id if league_id else DEFAULT_LEAGUE
 
 prediction = get_prediction_for_match(
     home_team,
     away_team,
+    league_id=effective_league_id,
+    season=season,
     selected_bet=selected_bet,
-    selected_odd=selected_odd
+    selected_odd=selected_odd,
+    league=league,
+    match_date=match_date,
+    bookmaker=bookmaker,
+    bet_type=bet_type,
 )
 
 if prediction is None:
@@ -92,6 +108,9 @@ if value_bet:
     v3.metric("Value", f"{value_bet['value']} %")
 
     st.write(f"Probabilité IA : {value_bet['ai_probability']} %")
+
+    if bookmaker:
+        st.caption(f"Bookmaker : {bookmaker} | Pari : {selected_bet}")
 
     if value_bet["value"] >= 5:
         st.success(value_bet["decision"])
@@ -148,11 +167,16 @@ st.subheader("📈 Forme récente - 5 derniers matchs")
 home_id = get_team_id(home_team)
 away_id = get_team_id(away_team)
 
-home_matches = get_last_matches(home_id) if home_id else []
-away_matches = get_last_matches(away_id) if away_id else []
-
-home_form = compute_team_form(home_matches, home_id) if home_id else None
-away_form = compute_team_form(away_matches, away_id) if away_id else None
+home_form = (
+    get_cached_or_compute_team_form(home_id, effective_league_id, season)
+    if home_id
+    else None
+)
+away_form = (
+    get_cached_or_compute_team_form(away_id, effective_league_id, season)
+    if away_id
+    else None
+)
 
 col3, col4 = st.columns(2)
 

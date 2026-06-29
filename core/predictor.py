@@ -1,4 +1,4 @@
-from core.form_model import form_score
+from form_model import form_score
 
 
 def team_strength(stats, recent_matches, team_id, home=True):

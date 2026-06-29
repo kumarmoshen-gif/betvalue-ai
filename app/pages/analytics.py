@@ -26,10 +26,15 @@ st.set_page_config(
 
 st.title("📊 Analytics BetValue AI")
 
-monthly_profit = load_monthly_profit()
-roi_confidence = load_roi_by_confidence()
-roi_odds = load_roi_by_odds()
-drawdown_history = load_drawdown_history()
+include_fallback = st.checkbox(
+    "Inclure les prédictions fallback",
+    value=False,
+)
+
+monthly_profit = load_monthly_profit(include_fallback=include_fallback)
+roi_confidence = load_roi_by_confidence(include_fallback=include_fallback)
+roi_odds = load_roi_by_odds(include_fallback=include_fallback)
+drawdown_history = load_drawdown_history(include_fallback=include_fallback)
 
 show_monthly_profit_chart(monthly_profit)
 

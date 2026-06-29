@@ -28,6 +28,23 @@ CREATE TABLE IF NOT EXISTS team_form (
     UNIQUE(team_api_id, league_id, season)
 );
 
+CREATE TABLE IF NOT EXISTS fixtures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    api_id INTEGER UNIQUE,
+    league_id INTEGER,
+    season INTEGER,
+    match_date TEXT,
+    status TEXT,
+    home_team TEXT,
+    away_team TEXT,
+    home_team_api_id INTEGER,
+    away_team_api_id INTEGER,
+    home_score INTEGER,
+    away_score INTEGER,
+    raw_data TEXT,
+    updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS prediction_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -79,5 +96,9 @@ CREATE TABLE IF NOT EXISTS prediction_history (
 
     bookmaker TEXT,
 
-    bet_type TEXT
+    bet_type TEXT,
+
+    fixture_api_id INTEGER,
+
+    settled_at TEXT
 );
