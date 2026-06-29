@@ -518,3 +518,35 @@ def load_roi_by_odds():
         )
 
     return results
+
+def load_drawdown_history():
+    """
+    Retourne l'évolution du drawdown de la bankroll.
+    """
+
+    bankroll_history = load_bankroll_history()
+
+    if not bankroll_history:
+        return []
+
+    peak = bankroll_history[0]["bankroll"]
+
+    history = []
+
+    for row in bankroll_history:
+        bankroll = row["bankroll"]
+
+        if bankroll > peak:
+            peak = bankroll
+
+        drawdown = bankroll - peak
+
+        history.append(
+            {
+                "created_at": row["created_at"],
+                "bankroll": bankroll,
+                "drawdown": round(drawdown, 2),
+            }
+        )
+
+    return history
