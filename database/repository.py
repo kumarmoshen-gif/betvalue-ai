@@ -493,3 +493,27 @@ def load_roi_history():
         )
 
     return history
+
+def load_monthly_profit():
+    """
+    Retourne le profit par mois.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT
+            substr(created_at, 1, 7) AS month,
+            SUM(profit) AS profit,
+            COUNT(*) AS bets
+        FROM prediction_history
+        WHERE result IS NOT NULL
+        GROUP BY month
+        ORDER BY month
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]
