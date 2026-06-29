@@ -65,5 +65,19 @@ CREATE TABLE IF NOT EXISTS prediction_history (
 
     bet_won INTEGER,
 
-    profit REAL DEFAULT 0
+    profit REAL DEFAULT 0,
+
+    league TEXT,
+
+    season INTEGER,
+
+    match_date TEXT,
+
+    home_score INTEGER,
+
+    away_score INTEGER,
+
+    bookmaker TEXT,
+
+    bet_type TEXT
 );

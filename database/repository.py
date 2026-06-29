@@ -1,105 +1,3 @@
-import json
-from datetime import datetime
-
-from database.database import get_connection
-
-
-# ==========================================================
-# Teams
-# ==========================================================
-
-def save_team(team_data):
-    team = team_data["team"]
-    conn = get_connection()
-
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO teams
-        (api_id, name, country, logo, raw_data, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        (
-            team["id"],
-            team["name"],
-            team.get("country"),
-            team.get("logo"),
-            json.dumps(team_data),
-            datetime.utcnow().isoformat(),
-        ),
-    )
-
-    conn.commit()
-    conn.close()
-
-
-def load_team_by_name(team_name):
-    conn = get_connection()
-
-    row = conn.execute(
-        """
-        SELECT raw_data
-        FROM teams
-        WHERE LOWER(name) = LOWER(?)
-        """,
-        (team_name,),
-    ).fetchone()
-
-    conn.close()
-
-    if row is None:
-        return None
-
-    return json.loads(row["raw_data"])
-
-
-def save_team_statistics(team_api_id, league_id, season, data):
-    conn = get_connection()
-
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO team_statistics
-        (team_api_id, league_id, season, data, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (
-            team_api_id,
-            league_id,
-            season,
-            json.dumps(data),
-            datetime.utcnow().isoformat(),
-        ),
-    )
-
-    conn.commit()
-    conn.close()
-
-
-def load_team_statistics(team_api_id, league_id, season):
-    conn = get_connection()
-
-    row = conn.execute(
-        """
-        SELECT data
-        FROM team_statistics
-        WHERE team_api_id = ?
-        AND league_id = ?
-        AND season = ?
-        """,
-        (team_api_id, league_id, season),
-    ).fetchone()
-
-    conn.close()
-
-    if row is None:
-        return None
-
-    return json.loads(row["data"])
-
-
-# ==========================================================
-# Prediction History
-# ==========================================================
-
 def save_prediction(prediction):
     conn = get_connection()
 
@@ -123,9 +21,16 @@ def save_prediction(prediction):
             stake,
             result,
             bet_won,
-            profit
+            profit,
+            league,
+            season,
+            match_date,
+            home_score,
+            away_score,
+            bookmaker,
+            bet_type
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             datetime.utcnow().isoformat(),
@@ -138,415 +43,34 @@ def save_prediction(prediction):
             prediction["away"],
             prediction["confidence"],
             prediction["selected_odd"],
+
             prediction["value_bet"]["bookmaker_probability"]
             if prediction.get("value_bet")
             else None,
+
             prediction["value_bet"]["value"]
             if prediction.get("value_bet")
             else None,
+
             prediction["value_bet"]["decision"]
             if prediction.get("value_bet")
             else None,
+
             int(prediction.get("fallback", False)),
             prediction.get("stake", 1),
             prediction.get("result"),
             prediction.get("bet_won"),
             prediction.get("profit", 0),
+
+            prediction.get("league"),
+            prediction.get("season"),
+            prediction.get("match_date"),
+            prediction.get("home_score"),
+            prediction.get("away_score"),
+            prediction.get("bookmaker"),
+            prediction.get("bet_type"),
         ),
     )
 
     conn.commit()
     conn.close()
-
-
-def load_prediction_history(limit=100):
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT *
-        FROM prediction_history
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
-
-    conn.close()
-
-    return [dict(row) for row in rows]
-
-
-def load_pending_predictions(limit=100):
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT *
-        FROM prediction_history
-        WHERE result IS NULL
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (limit,),
-    ).fetchall()
-
-    conn.close()
-
-    return [dict(row) for row in rows]
-
-
-def update_prediction_result(prediction_id, result, stake=1):
-    conn = get_connection()
-
-    row = conn.execute(
-        """
-        SELECT predicted_result, odd
-        FROM prediction_history
-        WHERE id = ?
-        """,
-        (prediction_id,),
-    ).fetchone()
-
-    if row is None:
-        conn.close()
-        return None
-
-    predicted_result = row["predicted_result"]
-    odd = row["odd"]
-
-    bet_won = int(str(predicted_result).lower() == str(result).lower())
-
-    if bet_won:
-        profit = round((odd - 1) * stake, 2)
-    else:
-        profit = -stake
-
-    conn.execute(
-        """
-        UPDATE prediction_history
-        SET result = ?,
-            stake = ?,
-            bet_won = ?,
-            profit = ?
-        WHERE id = ?
-        """,
-        (
-            result,
-            stake,
-            bet_won,
-            profit,
-            prediction_id,
-        ),
-    )
-
-    conn.commit()
-    conn.close()
-
-    return {
-        "prediction_id": prediction_id,
-        "result": result,
-        "stake": stake,
-        "bet_won": bet_won,
-        "profit": profit,
-    }
-
-
-# ==========================================================
-# Performance
-# ==========================================================
-
-def load_performance_stats():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT stake, bet_won, profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        """
-    ).fetchall()
-
-    conn.close()
-
-    bets = [dict(row) for row in rows]
-
-    total_bets = len(bets)
-    won_bets = sum(1 for bet in bets if bet["bet_won"] == 1)
-    lost_bets = sum(1 for bet in bets if bet["bet_won"] == 0)
-
-    total_stake = sum(float(bet["stake"] or 0) for bet in bets)
-    total_profit = sum(float(bet["profit"] or 0) for bet in bets)
-
-    roi = round((total_profit / total_stake) * 100, 2) if total_stake else 0
-    hit_rate = round((won_bets / total_bets) * 100, 2) if total_bets else 0
-
-    return {
-        "total_bets": total_bets,
-        "won_bets": won_bets,
-        "lost_bets": lost_bets,
-        "total_stake": round(total_stake, 2),
-        "total_profit": round(total_profit, 2),
-        "roi": roi,
-        "hit_rate": hit_rate,
-    }
-
-
-def load_bankroll_history():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT created_at, match, profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    history = []
-    bankroll = 0
-
-    for row in rows:
-        profit = float(row["profit"] or 0)
-        bankroll += profit
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "match": row["match"],
-                "profit": profit,
-                "bankroll": round(bankroll, 2),
-            }
-        )
-
-    return history
-
-
-def load_profit_history():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT created_at, profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    history = []
-    cumulative_profit = 0
-
-    for row in rows:
-        profit = float(row["profit"] or 0)
-        cumulative_profit += profit
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "profit": profit,
-                "cumulative_profit": round(cumulative_profit, 2),
-            }
-        )
-
-    return history
-
-
-def load_roi_history():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT created_at, stake, profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    history = []
-    total_profit = 0
-    total_stake = 0
-
-    for row in rows:
-        stake = float(row["stake"] or 0)
-        profit = float(row["profit"] or 0)
-
-        total_profit += profit
-        total_stake += stake
-
-        roi = round((total_profit / total_stake) * 100, 2) if total_stake else 0
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "roi": roi,
-            }
-        )
-
-    return history
-
-
-# ==========================================================
-# Analytics
-# ==========================================================
-
-def load_monthly_profit():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            substr(created_at, 1, 7) AS month,
-            ROUND(SUM(profit), 2) AS profit,
-            COUNT(*) AS bets
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        GROUP BY month
-        ORDER BY month
-        """
-    ).fetchall()
-
-    conn.close()
-
-    return [dict(row) for row in rows]
-
-
-def load_roi_by_confidence():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            CASE
-                WHEN confidence >= 90 THEN '90-100%'
-                WHEN confidence >= 80 THEN '80-89%'
-                WHEN confidence >= 70 THEN '70-79%'
-                WHEN confidence >= 60 THEN '60-69%'
-                ELSE '<60%'
-            END AS confidence_range,
-            SUM(profit) AS total_profit,
-            SUM(stake) AS total_stake,
-            COUNT(*) AS bets
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        GROUP BY confidence_range
-        ORDER BY
-            CASE confidence_range
-                WHEN '<60%' THEN 1
-                WHEN '60-69%' THEN 2
-                WHEN '70-79%' THEN 3
-                WHEN '80-89%' THEN 4
-                WHEN '90-100%' THEN 5
-                ELSE 6
-            END
-        """
-    ).fetchall()
-
-    conn.close()
-
-    results = []
-
-    for row in rows:
-        roi = 0
-
-        if row["total_stake"]:
-            roi = round((row["total_profit"] / row["total_stake"]) * 100, 2)
-
-        results.append(
-            {
-                "confidence": row["confidence_range"],
-                "roi": roi,
-                "bets": row["bets"],
-            }
-        )
-
-    return results
-
-
-def load_roi_by_odds():
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            CASE
-                WHEN odd < 1.50 THEN '<1.50'
-                WHEN odd < 2.00 THEN '1.50-1.99'
-                WHEN odd < 3.00 THEN '2.00-2.99'
-                ELSE '3.00+'
-            END AS odd_range,
-            SUM(profit) AS total_profit,
-            SUM(stake) AS total_stake,
-            COUNT(*) AS bets
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        GROUP BY odd_range
-        ORDER BY
-            CASE odd_range
-                WHEN '<1.50' THEN 1
-                WHEN '1.50-1.99' THEN 2
-                WHEN '2.00-2.99' THEN 3
-                ELSE 4
-            END
-        """
-    ).fetchall()
-
-    conn.close()
-
-    results = []
-
-    for row in rows:
-        roi = 0
-
-        if row["total_stake"]:
-            roi = round((row["total_profit"] / row["total_stake"]) * 100, 2)
-
-        results.append(
-            {
-                "odd_range": row["odd_range"],
-                "roi": roi,
-                "bets": row["bets"],
-            }
-        )
-
-    return results
-
-def load_drawdown_history():
-    """
-    Retourne l'évolution du drawdown de la bankroll.
-    """
-
-    bankroll_history = load_bankroll_history()
-
-    if not bankroll_history:
-        return []
-
-    peak = bankroll_history[0]["bankroll"]
-
-    history = []
-
-    for row in bankroll_history:
-        bankroll = row["bankroll"]
-
-        if bankroll > peak:
-            peak = bankroll
-
-        drawdown = bankroll - peak
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "bankroll": bankroll,
-                "drawdown": round(drawdown, 2),
-            }
-        )
-
-    return history
