@@ -339,3 +339,89 @@ def load_bankroll_history():
         )
 
     return history
+
+def load_profit_history():
+    """
+    Retourne l'évolution du profit cumulé.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT
+            created_at,
+            profit
+        FROM prediction_history
+        WHERE result IS NOT NULL
+        ORDER BY created_at ASC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    history = []
+    cumulative_profit = 0
+
+    for row in rows:
+        profit = float(row["profit"] or 0)
+        cumulative_profit += profit
+
+        history.append(
+            {
+                "created_at": row["created_at"],
+                "profit": profit,
+                "cumulative_profit": round(cumulative_profit, 2),
+            }
+        )
+
+    return history
+
+
+def load_roi_history():
+    """
+    Retourne l'évolution du ROI après chaque pari.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT
+            created_at,
+            stake,
+            profit
+        FROM prediction_history
+        WHERE result IS NOT NULL
+        ORDER BY created_at ASC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    history = []
+
+    total_profit = 0
+    total_stake = 0
+
+    for row in rows:
+        stake = float(row["stake"] or 0)
+        profit = float(row["profit"] or 0)
+
+        total_profit += profit
+        total_stake += stake
+
+        roi = (
+            round((total_profit / total_stake) * 100, 2)
+            if total_stake > 0
+            else 0
+        )
+
+        history.append(
+            {
+                "created_at": row["created_at"],
+                "roi": roi,
+            }
+        )
+
+    return history
