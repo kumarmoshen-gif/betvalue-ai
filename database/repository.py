@@ -517,3 +517,58 @@ def load_monthly_profit():
     conn.close()
 
     return [dict(row) for row in rows]
+
+def load_roi_by_confidence():
+    """
+    Retourne le ROI par tranche de confiance.
+    """
+
+    conn = get_connection()
+
+    rows = conn.execute(
+        """
+        SELECT
+            CASE
+                WHEN confidence >= 90 THEN '90-100%'
+                WHEN confidence >= 80 THEN '80-89%'
+                WHEN confidence >= 70 THEN '70-79%'
+                WHEN confidence >= 60 THEN '60-69%'
+                ELSE '<60%'
+            END AS confidence_range,
+
+            SUM(profit) AS total_profit,
+            SUM(stake) AS total_stake,
+            COUNT(*) AS bets
+
+        FROM prediction_history
+
+        WHERE result IS NOT NULL
+
+        GROUP BY confidence_range
+
+        ORDER BY confidence_range DESC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    results = []
+
+    for row in rows:
+        roi = 0
+
+        if row["total_stake"]:
+            roi = round(
+                (row["total_profit"] / row["total_stake"]) * 100,
+                2,
+            )
+
+        results.append(
+            {
+                "confidence": row["confidence_range"],
+                "roi": roi,
+                "bets": row["bets"],
+            }
+        )
+
+    return results
