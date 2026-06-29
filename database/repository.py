@@ -4,9 +4,12 @@ from datetime import datetime
 from database.database import get_connection
 
 
+# ==========================================================
+# Teams
+# ==========================================================
+
 def save_team(team_data):
     team = team_data["team"]
-
     conn = get_connection()
 
     conn.execute(
@@ -92,6 +95,10 @@ def load_team_statistics(team_api_id, league_id, season):
 
     return json.loads(row["data"])
 
+
+# ==========================================================
+# Prediction History
+# ==========================================================
 
 def save_prediction(prediction):
     conn = get_connection()
@@ -245,6 +252,10 @@ def update_prediction_result(prediction_id, result, stake=1):
     }
 
 
+# ==========================================================
+# Performance
+# ==========================================================
+
 def load_performance_stats():
     conn = get_connection()
 
@@ -279,35 +290,8 @@ def load_performance_stats():
         "roi": roi,
         "hit_rate": hit_rate,
     }
-def load_bankroll_history():
-    conn = get_connection()
 
-    rows = conn.execute(
-        """
-        SELECT created_at, match, profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
 
-    conn.close()
-
-    history = []
-    bankroll = 0
-
-    for row in rows:
-        profit = float(row["profit"] or 0)
-        bankroll += profit
-
-        history.append({
-            "created_at": row["created_at"],
-            "match": row["match"],
-            "profit": profit,
-            "bankroll": round(bankroll, 2),
-        })
-
-    return history
 def load_bankroll_history():
     conn = get_connection()
 
@@ -340,91 +324,6 @@ def load_bankroll_history():
 
     return history
 
-def load_profit_history():
-    """
-    Retourne l'évolution du profit cumulé.
-    """
-
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            created_at,
-            profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    history = []
-    cumulative_profit = 0
-
-    for row in rows:
-        profit = float(row["profit"] or 0)
-        cumulative_profit += profit
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "profit": profit,
-                "cumulative_profit": round(cumulative_profit, 2),
-            }
-        )
-
-    return history
-
-
-def load_roi_history():
-    """
-    Retourne l'évolution du ROI après chaque pari.
-    """
-
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            created_at,
-            stake,
-            profit
-        FROM prediction_history
-        WHERE result IS NOT NULL
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    history = []
-
-    total_profit = 0
-    total_stake = 0
-
-    for row in rows:
-        stake = float(row["stake"] or 0)
-        profit = float(row["profit"] or 0)
-
-        total_profit += profit
-        total_stake += stake
-
-        roi = (
-            round((total_profit / total_stake) * 100, 2)
-            if total_stake > 0
-            else 0
-        )
-
-        history.append(
-            {
-                "created_at": row["created_at"],
-                "roi": roi,
-            }
-        )
-
-    return history
 
 def load_profit_history():
     conn = get_connection()
@@ -494,18 +393,19 @@ def load_roi_history():
 
     return history
 
-def load_monthly_profit():
-    """
-    Retourne le profit par mois.
-    """
 
+# ==========================================================
+# Analytics
+# ==========================================================
+
+def load_monthly_profit():
     conn = get_connection()
 
     rows = conn.execute(
         """
         SELECT
             substr(created_at, 1, 7) AS month,
-            SUM(profit) AS profit,
+            ROUND(SUM(profit), 2) AS profit,
             COUNT(*) AS bets
         FROM prediction_history
         WHERE result IS NOT NULL
@@ -518,11 +418,8 @@ def load_monthly_profit():
 
     return [dict(row) for row in rows]
 
-def load_roi_by_confidence():
-    """
-    Retourne le ROI par tranche de confiance.
-    """
 
+def load_roi_by_confidence():
     conn = get_connection()
 
     rows = conn.execute(
@@ -535,18 +432,21 @@ def load_roi_by_confidence():
                 WHEN confidence >= 60 THEN '60-69%'
                 ELSE '<60%'
             END AS confidence_range,
-
             SUM(profit) AS total_profit,
             SUM(stake) AS total_stake,
             COUNT(*) AS bets
-
         FROM prediction_history
-
         WHERE result IS NOT NULL
-
         GROUP BY confidence_range
-
-        ORDER BY confidence_range DESC
+        ORDER BY
+            CASE confidence_range
+                WHEN '<60%' THEN 1
+                WHEN '60-69%' THEN 2
+                WHEN '70-79%' THEN 3
+                WHEN '80-89%' THEN 4
+                WHEN '90-100%' THEN 5
+                ELSE 6
+            END
         """
     ).fetchall()
 
@@ -558,10 +458,7 @@ def load_roi_by_confidence():
         roi = 0
 
         if row["total_stake"]:
-            roi = round(
-                (row["total_profit"] / row["total_stake"]) * 100,
-                2,
-            )
+            roi = round((row["total_profit"] / row["total_stake"]) * 100, 2)
 
         results.append(
             {
@@ -573,60 +470,6 @@ def load_roi_by_confidence():
 
     return results
 
-def load_roi_by_confidence():
-    """
-    Retourne le ROI par tranche de confiance.
-    """
-
-    conn = get_connection()
-
-    rows = conn.execute(
-        """
-        SELECT
-            CASE
-                WHEN confidence >= 90 THEN '90-100%'
-                WHEN confidence >= 80 THEN '80-89%'
-                WHEN confidence >= 70 THEN '70-79%'
-                WHEN confidence >= 60 THEN '60-69%'
-                ELSE '<60%'
-            END AS confidence_range,
-
-            SUM(profit) AS total_profit,
-            SUM(stake) AS total_stake,
-            COUNT(*) AS bets
-
-        FROM prediction_history
-
-        WHERE result IS NOT NULL
-
-        GROUP BY confidence_range
-
-        ORDER BY confidence_range DESC
-        """
-    ).fetchall()
-
-    conn.close()
-
-    results = []
-
-    for row in rows:
-        roi = 0
-
-        if row["total_stake"]:
-            roi = round(
-                (row["total_profit"] / row["total_stake"]) * 100,
-                2,
-            )
-
-        results.append(
-            {
-                "confidence": row["confidence_range"],
-                "roi": roi,
-                "bets": row["bets"],
-            }
-        )
-
-    return results
 
 def load_roi_by_odds():
     conn = get_connection()
